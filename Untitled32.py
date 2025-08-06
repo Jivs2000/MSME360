@@ -26,15 +26,12 @@ def load_user_data(username):
     """Loads a user's data from a JSON file."""
     filepath = os.path.join(DATA_DIR, f"{username}.json")
     if os.path.exists(filepath):
-        with open(filepath, 'r') as f:
-            return json.load(f)
-    return {
-        'products': {},
-        'customers': {},
-        'suppliers': {},
-        'sales_orders': [],
-        'purchase_orders': []
-    }
+        try:
+            with open(filepath, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return {} # Return an empty dict if file is corrupted
+    return {}
 
 def save_user_data(username, data):
     """Saves a user's data to a JSON file."""
@@ -55,7 +52,7 @@ def login_form():
 
     with st.form("login"):
         username = st.text_input("Username")
-        password = st.text_input("Password", type="password") # For display purposes only, no real security
+        password = st.text_input("Password", type="password")
         submit_button = st.form_submit_button("Login")
 
         if submit_button:
@@ -63,7 +60,7 @@ def login_form():
                 st.session_state.logged_in = True
                 st.session_state.username = username
                 st.success(f"Logged in as {username}!")
-                st.rerun() # Rerun to display the main app
+                st.rerun()
             else:
                 st.error("Please enter both username and password.")
 
@@ -71,25 +68,30 @@ def login_form():
 if not st.session_state.logged_in:
     login_form()
 else:
-    # --- Load User Data ---
+    # --- Corrected Data Loading ---
     user_data = load_user_data(st.session_state.username)
     st.session_state.products = user_data.get('products', {})
     st.session_state.customers = user_data.get('customers', {})
     st.session_state.suppliers = user_data.get('suppliers', {})
     st.session_state.sales_orders = user_data.get('sales_orders', [])
     st.session_state.purchase_orders = user_data.get('purchase_orders', [])
-
+    
     # --- Logout Function ---
     def logout():
-        save_user_data(st.session_state.username, {
+        # Save current session data before logging out
+        data_to_save = {
             'products': st.session_state.products,
             'customers': st.session_state.customers,
             'suppliers': st.session_state.suppliers,
             'sales_orders': st.session_state.sales_orders,
             'purchase_orders': st.session_state.purchase_orders
-        })
-        st.session_state.logged_in = False
-        st.session_state.username = None
+        }
+        save_user_data(st.session_state.username, data_to_save)
+        
+        # Clear session state for next login
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+            
         st.info("Logged out successfully.")
         st.rerun()
 
@@ -123,7 +125,6 @@ else:
     # --- Dashboard Module ---
     if page == "Dashboard":
         st.title("Dashboard 📈")
-
         st.header("Key Metrics")
         col1, col2, col3, col4 = st.columns(4)
         total_products = len(st.session_state.products)
@@ -141,7 +142,7 @@ else:
             sales_by_date = sales_df.groupby(sales_df['date'].dt.date)['total_amount'].sum().reset_index()
             sales_by_date.rename(columns={'date': 'Date', 'total_amount': 'Total Sales'}, inplace=True)
             st.line_chart(sales_by_date.set_index('Date'))
-
+        
     # --- Inventory Module ---
     elif page == "Inventory":
         st.title("Inventory Management 📦")
@@ -163,7 +164,6 @@ else:
                     save_user_data(st.session_state.username, st.session_state)
                 elif submit_button:
                     st.error("Product Name is required.")
-
         st.header("Current Inventory")
         if st.session_state.products:
             products_df = pd.DataFrame(st.session_state.products).T
@@ -172,7 +172,7 @@ else:
             st.dataframe(products_df.style.apply(lambda x: ['background-color: #ff9999' if x['Stock Status'] == 'Low Stock' else '' for i in x], axis=1), use_container_width=True)
         else:
             st.info("No products in inventory. Add a new product to get started.")
-
+    
     # --- Sales Module ---
     elif page == "Sales":
         st.title("Sales Management 🛒")
@@ -224,7 +224,7 @@ else:
             sales_df = pd.DataFrame(st.session_state.sales_orders)
             sales_df = sales_df.drop(columns=['items'])
             st.dataframe(sales_df, use_container_width=True)
-
+    
     # --- Purchases Module ---
     elif page == "Purchases":
         st.title("Purchase Management 📝")
@@ -271,7 +271,7 @@ else:
             purchases_df = pd.DataFrame(st.session_state.purchase_orders)
             purchases_df = purchases_df.drop(columns=['items'])
             st.dataframe(purchases_df, use_container_width=True)
-
+    
     # --- Customers Module ---
     elif page == "Customers":
         st.title("Customer Relationship Management 👥")
@@ -298,7 +298,7 @@ else:
             customers_df = pd.DataFrame(st.session_state.customers).T
             customers_df.index.name = "Customer ID"
             st.dataframe(customers_df, use_container_width=True)
-
+    
     # --- Suppliers Module ---
     elif page == "Suppliers":
         st.title("Supplier Management 🚚")
@@ -325,7 +325,7 @@ else:
             suppliers_df = pd.DataFrame(st.session_state.suppliers).T
             suppliers_df.index.name = "Supplier ID"
             st.dataframe(suppliers_df, use_container_width=True)
-
+    
     # --- Financial Health Module ---
     elif page == "Financial Health":
         st.title("Financial Health & Capital Requirement 💰")
@@ -369,12 +369,8 @@ else:
     elif page == "Business Expansion":
         st.title("Business Expansion Toolkit 🚀")
         st.write("Based on your total sales, here's a personalized toolkit to help you grow your business.")
-
         total_sales = sum(item['total_amount'] for item in st.session_state.sales_orders)
-        
         st.metric("Total Sales", f"₹{total_sales:,.2f}")
-
-        # Define sales brackets and corresponding advice
         if total_sales < 50000:
             st.header("Stage: Emerging Business 🐣")
             st.info("Your business is in its early stages. The focus should be on building a solid foundation and reaching your first key customers.")
@@ -397,7 +393,7 @@ else:
             - **Hire Strategically:** Consider bringing on your first employees to delegate tasks and free up your time.
             - **Introduce New Product Lines:** Expand your offerings with complementary products to increase average order value.
             """)
-        else: # total_sales >= 200000
+        else:
             st.header("Stage: Scaling Business 🚀")
             st.info("Your business is a well-oiled machine. It's time to think about long-term growth and market dominance.")
             st.subheader("Actionable Toolkit:")
