@@ -26,10 +26,14 @@ def load_user_data(username):
     """Loads a user's data from a JSON file."""
     filepath = os.path.join(DATA_DIR, f"{username}.json")
     if os.path.exists(filepath):
+        # Check if the file is empty before trying to load it
+        if os.path.getsize(filepath) == 0:
+            return {}
         try:
             with open(filepath, 'r') as f:
                 return json.load(f)
         except json.JSONDecodeError:
+            # Handle cases where the file might be corrupted
             return {}
     return {}
 
@@ -70,12 +74,15 @@ if not st.session_state.logged_in:
 else:
     # --- Corrected Data Loading ---
     user_data = load_user_data(st.session_state.username)
+
+    # Ensure st.session_state has all the necessary keys
+    # before proceeding. This is the new, robust method.
     st.session_state['products'] = user_data.get('products', {})
     st.session_state['customers'] = user_data.get('customers', {})
     st.session_state['suppliers'] = user_data.get('suppliers', {})
     st.session_state['sales_orders'] = user_data.get('sales_orders', [])
     st.session_state['purchase_orders'] = user_data.get('purchase_orders', [])
-    
+
     # --- Logout Function ---
     def logout():
         data_to_save = {
@@ -86,11 +93,10 @@ else:
             'purchase_orders': st.session_state['purchase_orders']
         }
         save_user_data(st.session_state.username, data_to_save)
-        
-        # Clear session state for next login
+
         for key in list(st.session_state.keys()):
             del st.session_state[key]
-            
+
         st.info("Logged out successfully.")
         st.rerun()
 
@@ -99,17 +105,23 @@ else:
         """Generates a new ID based on a prefix and existing data."""
         if not data_dict:
             return f"{prefix}001"
-        last_id_num = max([int(k[len(prefix):]) for k in data_dict.keys()])
-        new_id_num = last_id_num + 1
-        return f"{prefix}{new_id_num:03d}"
+        try:
+            last_id_num = max([int(k[len(prefix):]) for k in data_dict.keys()])
+            new_id_num = last_id_num + 1
+            return f"{prefix}{new_id_num:03d}"
+        except (ValueError, IndexError):
+            return f"{prefix}001"
 
     def get_next_order_id(prefix, data_list):
         """Generates a new order ID."""
         if not data_list:
             return f"{prefix}001"
-        last_id_num = max([int(item['id'][len(prefix):]) for item in data_list])
-        new_id_num = last_id_num + 1
-        return f"{prefix}{new_id_num:03d}"
+        try:
+            last_id_num = max([int(item['id'][len(prefix):]) for item in data_list])
+            new_id_num = last_id_num + 1
+            return f"{prefix}{new_id_num:03d}"
+        except (ValueError, IndexError):
+            return f"{prefix}001"
 
     # --- Sidebar Navigation ---
     st.sidebar.title(f"Welcome, {st.session_state.username} 👋")
@@ -141,7 +153,7 @@ else:
             sales_by_date = sales_df.groupby(sales_df['date'].dt.date)['total_amount'].sum().reset_index()
             sales_by_date.rename(columns={'date': 'Date', 'total_amount': 'Total Sales'}, inplace=True)
             st.line_chart(sales_by_date.set_index('Date'))
-        
+
     # --- Inventory Module ---
     elif page == "Inventory":
         st.title("Inventory Management 📦")
@@ -171,7 +183,7 @@ else:
             st.dataframe(products_df.style.apply(lambda x: ['background-color: #ff9999' if x['Stock Status'] == 'Low Stock' else '' for i in x], axis=1), use_container_width=True)
         else:
             st.info("No products in inventory. Add a new product to get started.")
-    
+
     # --- Sales Module ---
     elif page == "Sales":
         st.title("Sales Management 🛒")
@@ -223,7 +235,7 @@ else:
             sales_df = pd.DataFrame(st.session_state['sales_orders'])
             sales_df = sales_df.drop(columns=['items'])
             st.dataframe(sales_df, use_container_width=True)
-    
+
     # --- Purchases Module ---
     elif page == "Purchases":
         st.title("Purchase Management 📝")
@@ -270,7 +282,7 @@ else:
             purchases_df = pd.DataFrame(st.session_state['purchase_orders'])
             purchases_df = purchases_df.drop(columns=['items'])
             st.dataframe(purchases_df, use_container_width=True)
-    
+
     # --- Customers Module ---
     elif page == "Customers":
         st.title("Customer Relationship Management 👥")
@@ -297,7 +309,7 @@ else:
             customers_df = pd.DataFrame(st.session_state['customers']).T
             customers_df.index.name = "Customer ID"
             st.dataframe(customers_df, use_container_width=True)
-    
+
     # --- Suppliers Module ---
     elif page == "Suppliers":
         st.title("Supplier Management 🚚")
@@ -324,7 +336,7 @@ else:
             suppliers_df = pd.DataFrame(st.session_state['suppliers']).T
             suppliers_df.index.name = "Supplier ID"
             st.dataframe(suppliers_df, use_container_width=True)
-    
+
     # --- Financial Health Module ---
     elif page == "Financial Health":
         st.title("Financial Health & Capital Requirement 💰")
