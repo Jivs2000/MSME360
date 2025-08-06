@@ -30,7 +30,7 @@ def load_user_data(username):
             with open(filepath, 'r') as f:
                 return json.load(f)
         except json.JSONDecodeError:
-            return {} # Return an empty dict if file is corrupted
+            return {}
     return {}
 
 def save_user_data(username, data):
@@ -69,21 +69,21 @@ if not st.session_state.logged_in:
     login_form()
 else:
     # --- Corrected Data Loading ---
+    user_data = load_user_data(st.session_state.username)
     st.session_state['products'] = user_data.get('products', {})
-st.session_state['customers'] = user_data.get('customers', {})
-st.session_state['suppliers'] = user_data.get('suppliers', {})
-st.session_state['sales_orders'] = user_data.get('sales_orders', [])
-st.session_state['purchase_orders'] = user_data.get('purchase_orders', [])
-
-# --- Logout Function ---
-def logout():
-        # Save current session data before logging out
+    st.session_state['customers'] = user_data.get('customers', {})
+    st.session_state['suppliers'] = user_data.get('suppliers', {})
+    st.session_state['sales_orders'] = user_data.get('sales_orders', [])
+    st.session_state['purchase_orders'] = user_data.get('purchase_orders', [])
+    
+    # --- Logout Function ---
+    def logout():
         data_to_save = {
-            'products': st.session_state.products,
-            'customers': st.session_state.customers,
-            'suppliers': st.session_state.suppliers,
-            'sales_orders': st.session_state.sales_orders,
-            'purchase_orders': st.session_state.purchase_orders
+            'products': st.session_state['products'],
+            'customers': st.session_state['customers'],
+            'suppliers': st.session_state['suppliers'],
+            'sales_orders': st.session_state['sales_orders'],
+            'purchase_orders': st.session_state['purchase_orders']
         }
         save_user_data(st.session_state.username, data_to_save)
         
@@ -126,17 +126,17 @@ def logout():
         st.title("Dashboard 📈")
         st.header("Key Metrics")
         col1, col2, col3, col4 = st.columns(4)
-        total_products = len(st.session_state.products)
+        total_products = len(st.session_state['products'])
         col1.metric("Total Products", total_products)
-        total_sales = sum(item['total_amount'] for item in st.session_state.sales_orders)
+        total_sales = sum(item['total_amount'] for item in st.session_state['sales_orders'])
         col2.metric("Total Sales Value", f"₹{total_sales:,.2f}")
-        total_customers = len(st.session_state.customers)
+        total_customers = len(st.session_state['customers'])
         col3.metric("Total Customers", total_customers)
-        low_stock_items = [p for p in st.session_state.products.values() if p['stock'] < p['reorder_level']]
+        low_stock_items = [p for p in st.session_state['products'].values() if p['stock'] < p['reorder_level']]
         col4.metric("Low Stock Items", len(low_stock_items))
-        if st.session_state.sales_orders:
+        if st.session_state['sales_orders']:
             st.header("Sales Trend")
-            sales_df = pd.DataFrame(st.session_state.sales_orders)
+            sales_df = pd.DataFrame(st.session_state['sales_orders'])
             sales_df['date'] = pd.to_datetime(sales_df['date'])
             sales_by_date = sales_df.groupby(sales_df['date'].dt.date)['total_amount'].sum().reset_index()
             sales_by_date.rename(columns={'date': 'Date', 'total_amount': 'Total Sales'}, inplace=True)
@@ -154,8 +154,8 @@ def logout():
                 reorder_level = st.number_input("Reorder Level", min_value=0, step=1)
                 submit_button = st.form_submit_button("Add Product")
                 if submit_button and product_name:
-                    product_id = get_next_id("PROD", st.session_state.products)
-                    st.session_state.products[product_id] = {
+                    product_id = get_next_id("PROD", st.session_state['products'])
+                    st.session_state['products'][product_id] = {
                         "name": product_name, "description": description, "unit_price": unit_price,
                         "stock": stock, "reorder_level": reorder_level
                     }
@@ -164,8 +164,8 @@ def logout():
                 elif submit_button:
                     st.error("Product Name is required.")
         st.header("Current Inventory")
-        if st.session_state.products:
-            products_df = pd.DataFrame(st.session_state.products).T
+        if st.session_state['products']:
+            products_df = pd.DataFrame(st.session_state['products']).T
             products_df.index.name = "Product ID"
             products_df['Stock Status'] = products_df.apply(lambda row: 'Low Stock' if row['stock'] < row['reorder_level'] else 'OK', axis=1)
             st.dataframe(products_df.style.apply(lambda x: ['background-color: #ff9999' if x['Stock Status'] == 'Low Stock' else '' for i in x], axis=1), use_container_width=True)
@@ -177,12 +177,12 @@ def logout():
         st.title("Sales Management 🛒")
         with st.expander("📝 Create New Sale Order"):
             with st.form("new_sale_order_form", clear_on_submit=True):
-                customer_options = {v['name']: k for k, v in st.session_state.customers.items()}
+                customer_options = {v['name']: k for k, v in st.session_state['customers'].items()}
                 customer_name = st.selectbox("Customer", [""] + list(customer_options.keys()))
                 st.markdown("---")
                 st.subheader("Items")
-                if st.session_state.products:
-                    product_options = {v['name']: k for k, v in st.session_state.products.items()}
+                if st.session_state['products']:
+                    product_options = {v['name']: k for k, v in st.session_state['products'].items()}
                     selected_products = []
                     for i in range(5):
                         st.markdown(f"**Item {i+1}**")
@@ -196,21 +196,21 @@ def logout():
                     st.warning("No products available. Please add products in the Inventory section first.")
                 submit_button = st.form_submit_button("Create Sale Order")
                 if submit_button and customer_name and selected_products:
-                    order_id = get_next_order_id("SO", st.session_state.sales_orders)
+                    order_id = get_next_order_id("SO", st.session_state['sales_orders'])
                     total_amount = 0
                     items = []
                     for item in selected_products:
-                        product = st.session_state.products[item['id']]
+                        product = st.session_state['products'][item['id']]
                         if product['stock'] >= item['quantity']:
                             subtotal = product['unit_price'] * item['quantity']
                             total_amount += subtotal
                             items.append({'product_id': item['id'], 'product_name': item['name'], 'quantity': item['quantity'], 'unit_price': product['unit_price'], 'subtotal': subtotal})
-                            st.session_state.products[item['id']]['stock'] -= item['quantity']
+                            st.session_state['products'][item['id']]['stock'] -= item['quantity']
                         else:
                             st.error(f"Cannot create order: Not enough stock for {item['name']} (Available: {product['stock']})")
                             break
                     else:
-                        st.session_state.sales_orders.append({
+                        st.session_state['sales_orders'].append({
                             "id": order_id, "date": datetime.date.today(), "customer_id": customer_options[customer_name],
                             "customer_name": customer_name, "items": items, "total_amount": total_amount
                         })
@@ -219,8 +219,8 @@ def logout():
                 elif submit_button:
                     st.error("Please select a customer and at least one product.")
         st.header("Recent Sales Orders")
-        if st.session_state.sales_orders:
-            sales_df = pd.DataFrame(st.session_state.sales_orders)
+        if st.session_state['sales_orders']:
+            sales_df = pd.DataFrame(st.session_state['sales_orders'])
             sales_df = sales_df.drop(columns=['items'])
             st.dataframe(sales_df, use_container_width=True)
     
@@ -229,12 +229,12 @@ def logout():
         st.title("Purchase Management 📝")
         with st.expander("📝 Create New Purchase Order"):
             with st.form("new_purchase_order_form", clear_on_submit=True):
-                supplier_options = {v['name']: k for k, v in st.session_state.suppliers.items()}
+                supplier_options = {v['name']: k for k, v in st.session_state['suppliers'].items()}
                 supplier_name = st.selectbox("Supplier", [""] + list(supplier_options.keys()))
                 st.markdown("---")
                 st.subheader("Items to Purchase")
-                if st.session_state.products:
-                    product_options = {v['name']: k for k, v in st.session_state.products.items()}
+                if st.session_state['products']:
+                    product_options = {v['name']: k for k, v in st.session_state['products'].items()}
                     selected_products = []
                     for i in range(5):
                         st.markdown(f"**Item {i+1}**")
@@ -248,16 +248,16 @@ def logout():
                     st.warning("No products available. Please add products in the Inventory section first.")
                 submit_button = st.form_submit_button("Create Purchase Order")
                 if submit_button and supplier_name and selected_products:
-                    order_id = get_next_order_id("PO", st.session_state.purchase_orders)
+                    order_id = get_next_order_id("PO", st.session_state['purchase_orders'])
                     total_amount = 0
                     items = []
                     for item in selected_products:
-                        product = st.session_state.products[item['id']]
+                        product = st.session_state['products'][item['id']]
                         subtotal = product['unit_price'] * item['quantity']
                         total_amount += subtotal
                         items.append({'product_id': item['id'], 'product_name': item['name'], 'quantity': item['quantity'], 'unit_price': product['unit_price'], 'subtotal': subtotal})
-                        st.session_state.products[item['id']]['stock'] += item['quantity']
-                    st.session_state.purchase_orders.append({
+                        st.session_state['products'][item['id']]['stock'] += item['quantity']
+                    st.session_state['purchase_orders'].append({
                         "id": order_id, "date": datetime.date.today(), "supplier_id": supplier_options[supplier_name],
                         "supplier_name": supplier_name, "items": items, "total_amount": total_amount
                     })
@@ -266,8 +266,8 @@ def logout():
                 elif submit_button:
                     st.error("Please select a supplier and at least one product.")
         st.header("Recent Purchase Orders")
-        if st.session_state.purchase_orders:
-            purchases_df = pd.DataFrame(st.session_state.purchase_orders)
+        if st.session_state['purchase_orders']:
+            purchases_df = pd.DataFrame(st.session_state['purchase_orders'])
             purchases_df = purchases_df.drop(columns=['items'])
             st.dataframe(purchases_df, use_container_width=True)
     
@@ -283,8 +283,8 @@ def logout():
                 address = st.text_area("Address")
                 submit_button = st.form_submit_button("Add Customer")
                 if submit_button and customer_name:
-                    customer_id = get_next_id("CUST", st.session_state.customers)
-                    st.session_state.customers[customer_id] = {
+                    customer_id = get_next_id("CUST", st.session_state['customers'])
+                    st.session_state['customers'][customer_id] = {
                         "name": customer_name, "contact_person": contact_person,
                         "email": email, "phone": phone, "address": address
                     }
@@ -293,8 +293,8 @@ def logout():
                 elif submit_button:
                     st.error("Customer Name is required.")
         st.header("Existing Customers")
-        if st.session_state.customers:
-            customers_df = pd.DataFrame(st.session_state.customers).T
+        if st.session_state['customers']:
+            customers_df = pd.DataFrame(st.session_state['customers']).T
             customers_df.index.name = "Customer ID"
             st.dataframe(customers_df, use_container_width=True)
     
@@ -310,8 +310,8 @@ def logout():
                 address = st.text_area("Address")
                 submit_button = st.form_submit_button("Add Supplier")
                 if submit_button and supplier_name:
-                    supplier_id = get_next_id("SUPP", st.session_state.suppliers)
-                    st.session_state.suppliers[supplier_id] = {
+                    supplier_id = get_next_id("SUPP", st.session_state['suppliers'])
+                    st.session_state['suppliers'][supplier_id] = {
                         "name": supplier_name, "contact_person": contact_person,
                         "email": email, "phone": phone, "address": address
                     }
@@ -320,8 +320,8 @@ def logout():
                 elif submit_button:
                     st.error("Supplier Name is required.")
         st.header("Existing Suppliers")
-        if st.session_state.suppliers:
-            suppliers_df = pd.DataFrame(st.session_state.suppliers).T
+        if st.session_state['suppliers']:
+            suppliers_df = pd.DataFrame(st.session_state['suppliers']).T
             suppliers_df.index.name = "Supplier ID"
             st.dataframe(suppliers_df, use_container_width=True)
     
@@ -330,12 +330,12 @@ def logout():
         st.title("Financial Health & Capital Requirement 💰")
         st.write("This module provides a simplified view of your business's financial status and suggests potential needs for capital.")
         st.warning("⚠️ **Disclaimer:** This is a simplified model for demonstration purposes and should not be considered professional financial advice. Please consult with a financial advisor for real-world decisions.")
-        total_sales = sum(item['total_amount'] for item in st.session_state.sales_orders)
-        total_purchases = sum(item['total_amount'] for item in st.session_state.purchase_orders)
+        total_sales = sum(item['total_amount'] for item in st.session_state['sales_orders'])
+        total_purchases = sum(item['total_amount'] for item in st.session_state['purchase_orders'])
         net_cash_flow = total_sales - total_purchases
         replenishment_cost = 0
         low_stock_items = []
-        for product_id, product_data in st.session_state.products.items():
+        for product_id, product_data in st.session_state['products'].items():
             if product_data['stock'] < product_data['reorder_level']:
                 quantity_needed = (product_data['reorder_level'] - product_data['stock']) + 10
                 cost = quantity_needed * product_data['unit_price']
@@ -368,7 +368,7 @@ def logout():
     elif page == "Business Expansion":
         st.title("Business Expansion Toolkit 🚀")
         st.write("Based on your total sales, here's a personalized toolkit to help you grow your business.")
-        total_sales = sum(item['total_amount'] for item in st.session_state.sales_orders)
+        total_sales = sum(item['total_amount'] for item in st.session_state['sales_orders'])
         st.metric("Total Sales", f"₹{total_sales:,.2f}")
         if total_sales < 50000:
             st.header("Stage: Emerging Business 🐣")
