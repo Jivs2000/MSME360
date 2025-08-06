@@ -22,31 +22,27 @@ if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
 def load_user_data(username):
-    """Loads a user's data from a JSON file with robust error handling."""
+    """Loads a user's data from a JSON file."""
     filepath = os.path.join(DATA_DIR, f"{username}.json")
     if os.path.exists(filepath):
         try:
-            # Check file size to avoid trying to load an empty file
-            if os.path.getsize(filepath) > 0:
-                with open(filepath, 'r') as f:
-                    return json.load(f)
-            else:
-                return {}
-        except json.JSONDecodeError:
-            # If the file is not valid JSON, return an empty dictionary
-            return {}
-    return {}
+            with open(filepath, 'r') as f:
+                # The code will attempt to load the JSON.
+                # If the file is empty, this will fail.
+                # If the file is corrupted, this will fail.
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            # If there's an error loading the file, we return None.
+            # We'll handle this explicitly in the main logic.
+            return None
+    return None
 
 def save_user_data(username, data):
     """Saves a user's data to a JSON file."""
     filepath = os.path.join(DATA_DIR, f"{username}.json")
     with open(filepath, 'w') as f:
-        # Use a try-except block to handle serialization errors, just in case
-        try:
-            json.dump(data, f, indent=4, default=str)
-        except TypeError as e:
-            st.error(f"Error saving data: {e}. Data not saved.")
-            
+        json.dump(data, f, indent=4, default=str)
+
 # --- Session State Initialization ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
@@ -76,29 +72,21 @@ def login_form():
 if not st.session_state.logged_in:
     login_form()
 else:
-    # This section remains correct. The problem is in how `user_data` gets its value.
+    # --- The NEW, more robust data loading section ---
     user_data = load_user_data(st.session_state.username)
     
-    # Initialize all session state keys to prevent potential errors
-    if 'products' not in st.session_state:
-        st.session_state['products'] = {}
-    if 'customers' not in st.session_state:
-        st.session_state['customers'] = {}
-    if 'suppliers' not in st.session_state:
-        st.session_state['suppliers'] = {}
-    if 'sales_orders' not in st.session_state:
-        st.session_state['sales_orders'] = []
-    if 'purchase_orders' not in st.session_state:
-        st.session_state['purchase_orders'] = []
-        
-    # Now, update the session state with the loaded data, which is guaranteed to be a dictionary
-    if user_data:
-        st.session_state['products'] = user_data.get('products', {})
-        st.session_state['customers'] = user_data.get('customers', {})
-        st.session_state['suppliers'] = user_data.get('suppliers', {})
-        st.session_state['sales_orders'] = user_data.get('sales_orders', [])
-        st.session_state['purchase_orders'] = user_data.get('purchase_orders', [])
+    # Check if user_data is actually a dictionary. If not, make it an empty one.
+    if not isinstance(user_data, dict):
+        user_data = {}
 
+    st.session_state['products'] = user_data.get('products', {})
+    st.session_state['customers'] = user_data.get('customers', {})
+    st.session_state['suppliers'] = user_data.get('suppliers', {})
+    st.session_state['sales_orders'] = user_data.get('sales_orders', [])
+    st.session_state['purchase_orders'] = user_data.get('purchase_orders', [])
+
+    # --- The rest of your code is unchanged and should now work ---
+    
     # --- Logout Function ---
     def logout():
         data_to_save = {
