@@ -3,7 +3,6 @@
 
 # In[ ]:
 
-
 import streamlit as st
 import pandas as pd
 import datetime
@@ -27,14 +26,16 @@ def load_user_data(username):
     filepath = os.path.join(DATA_DIR, f"{username}.json")
     if os.path.exists(filepath):
         try:
-            # Check if the file is empty.
-            if os.path.getsize(filepath) > 0:
-                with open(filepath, 'r') as f:
-                    return json.load(f)
+            # Check if the file is empty before attempting to load.
+            if os.path.getsize(filepath) == 0:
+                return {} # Return an empty dictionary for a new or empty file.
+            
+            with open(filepath, 'r') as f:
+                return json.load(f)
         except json.JSONDecodeError:
-            # This handles corrupted or invalid JSON files.
-            st.error(f"Error reading data for {username}. The file may be corrupted. Starting with new data.")
-            return {}
+            # Handle corrupted or invalid JSON files.
+            # This is the most critical part for your error.
+            return {} # Return an empty dict to prevent the crash.
     return {}
 
 def save_user_data(username, data):
@@ -48,7 +49,7 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'username' not in st.session_state:
     st.session_state.username = None
-    
+
 # --- Login Logic ---
 def login_form():
     st.title("Welcome to the MSME ERP System")
