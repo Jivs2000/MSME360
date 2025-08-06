@@ -37,7 +37,7 @@ if 'sales_history' not in st.session_state:
     st.session_state.sales_history = pd.DataFrame(columns=['Date', 'Product ID', 'Product Name', 'Quantity', 'Total Sale'])
 
 # --- Sidebar Navigation ---
-st.sidebar.title("🏢 Streamlit ERP for MSMEs")
+st.sidebar.title("MSME360")
 st.sidebar.markdown("---")
 page = st.sidebar.radio(
     "Navigation",
@@ -70,17 +70,17 @@ def update_stock(product_id, quantity_change, operation):
 
 # Dashboard
 if page == "Dashboard":
-    st.title("📊 Dashboard")
+    st.title("Dashboard")
     st.markdown("---")
 
     # Metrics
     col1, col2, col3, col4 = st.columns(4)
 
     total_sales = st.session_state.sales_orders['Total Amount'].sum()
-    col1.metric("💰 Total Sales", f"${total_sales:,.2f}")
+    col1.metric("Total Sales", f"${total_sales:,.2f}")
 
     current_stock_value = (st.session_state.inventory['Unit Price'] * st.session_state.inventory['Current Stock Quantity']).sum()
-    col2.metric("📦 Current Stock Value", f"${current_stock_value:,.2f}")
+    col2.metric("Current Stock Value", f"${current_stock_value:,.2f}")
 
     pending_orders = st.session_state.sales_orders.shape[0] - st.session_state.sales_orders[
         'Order ID'
@@ -90,7 +90,7 @@ if page == "Dashboard":
     low_stock_items = st.session_state.inventory[
         st.session_state.inventory['Current Stock Quantity'] <= st.session_state.inventory['Reorder Level']
     ].shape[0]
-    col4.metric("📉 Low Stock Items", low_stock_items)
+    col4.metric("Low Stock Items", low_stock_items)
 
     st.markdown("---")
 
@@ -104,7 +104,7 @@ if page == "Dashboard":
         st.info("No sales data available to display trends.")
 
     # Top-Selling Products Chart
-    st.subheader("🏆 Top-Selling Products")
+    st.subheader("Top-Selling Products")
     if not st.session_state.sales_history.empty:
         top_products = st.session_state.sales_history.groupby('Product Name')['Quantity'].sum().nlargest(5)
         st.bar_chart(top_products)
@@ -113,7 +113,7 @@ if page == "Dashboard":
 
 # Inventory Management
 elif page == "Inventory Management":
-    st.title("📦 Inventory Management")
+    st.title("Inventory Management")
     st.markdown("---")
 
     inventory_tab, add_product_tab, update_stock_tab = st.tabs(
@@ -175,13 +175,13 @@ elif page == "Inventory Management":
                 st.session_state.inventory['Current Stock Quantity'] <= st.session_state.inventory['Reorder Level']
             ]
             if not low_stock_items.empty:
-                st.warning("🚨 Low Stock Alert! The following products are below their reorder level.")
+                st.warning("Low Stock Alert! The following products are below their reorder level.")
                 st.dataframe(low_stock_items)
         else:
             st.info("No products in inventory. Add a new product to get started.")
 
     with update_stock_tab:
-        st.subheader("🔄 Update Stock")
+        st.subheader("Update Stock")
         if not st.session_state.inventory.empty:
             product_to_update = st.selectbox(
                 "Select Product", st.session_state.inventory['Product Name']
@@ -213,7 +213,7 @@ elif page == "Inventory Management":
 
 # Sales Management
 elif page == "Sales Management":
-    st.title("💲 Sales Management")
+    st.title("Sales Management")
     st.markdown("---")
 
     create_sale_tab, view_sales_tab = st.tabs(["Create Sale Order", "View Sales Orders"])
@@ -295,7 +295,7 @@ elif page == "Sales Management":
                         st.success(f"Sale order for '{customer_name}' recorded successfully!")
 
     with view_sales_tab:
-        st.subheader("📜 All Sales Orders")
+        st.subheader("All Sales Orders")
         if not st.session_state.sales_orders.empty:
             st.dataframe(st.session_state.sales_orders)
         else:
@@ -303,13 +303,13 @@ elif page == "Sales Management":
 
 # Purchase Management
 elif page == "Purchase Management":
-    st.title("🛒 Purchase Management")
+    st.title("Purchase Management")
     st.markdown("---")
 
     create_purchase_tab, view_purchases_tab = st.tabs(["Create Purchase Order", "View Purchase Orders"])
 
     with create_purchase_tab:
-        st.subheader("🛍️ Create New Purchase Order")
+        st.subheader("Create New Purchase Order")
         if st.session_state.inventory.empty or st.session_state.suppliers.empty:
             st.warning("Please add products to inventory and suppliers before creating a purchase.")
         else:
@@ -371,13 +371,13 @@ elif page == "Purchase Management":
 
 # Customer Management
 elif page == "Customer Management":
-    st.title("🤝 Customer Management (CRM)")
+    st.title("Customer Management (CRM)")
     st.markdown("---")
 
     add_customer_tab, view_customers_tab = st.tabs(["Add New Customer", "View Customers"])
 
     with add_customer_tab:
-        st.subheader("➕ Add New Customer")
+        st.subheader("Add New Customer")
         with st.form("add_customer_form"):
             name = st.text_input("Company Name")
             contact_person = st.text_input("Contact Person")
@@ -404,7 +404,7 @@ elif page == "Customer Management":
                     st.error("Please enter a company name.")
 
     with view_customers_tab:
-        st.subheader("📋 All Customers")
+        st.subheader("All Customers")
         if not st.session_state.customers.empty:
             st.dataframe(st.session_state.customers)
         else:
@@ -412,7 +412,7 @@ elif page == "Customer Management":
 
 # Supplier Management
 elif page == "Supplier Management":
-    st.title("🚚 Supplier Management")
+    st.title("Supplier Management")
     st.markdown("---")
 
     add_supplier_tab, view_suppliers_tab = st.tabs(["Add New Supplier", "View Suppliers"])
@@ -445,7 +445,7 @@ elif page == "Supplier Management":
                     st.error("Please enter a company name.")
 
     with view_suppliers_tab:
-        st.subheader("📋 All Suppliers")
+        st.subheader("All Suppliers")
         if not st.session_state.suppliers.empty:
             st.dataframe(st.session_state.suppliers)
         else:
@@ -453,7 +453,7 @@ elif page == "Supplier Management":
 
 # Reporting
 elif page == "Reporting":
-    st.title("📈 Reporting")
+    st.title("Reporting")
     st.markdown("---")
 
     sales_tab, inventory_tab, purchase_tab, toolkit_tab = st.tabs(
@@ -461,42 +461,42 @@ elif page == "Reporting":
     )
 
     with sales_tab:
-        st.subheader("📊 Sales Report")
+        st.subheader("Sales Report")
         if not st.session_state.sales_history.empty:
             st.dataframe(st.session_state.sales_history)
         else:
             st.info("No sales history to display.")
 
     with inventory_tab:
-        st.subheader("📋 Inventory Report")
+        st.subheader("Inventory Report")
         if not st.session_state.inventory.empty:
             st.dataframe(st.session_state.inventory)
             low_stock_items = st.session_state.inventory[
                 st.session_state.inventory['Current Stock Quantity'] <= st.session_state.inventory['Reorder Level']
             ]
             if not low_stock_items.empty:
-                st.warning("🚨 Low Stock Items")
+                st.warning("Low Stock Items")
                 st.dataframe(low_stock_items)
             else:
-                st.success("🎉 All inventory levels are good!")
+                st.success("All inventory levels are good!")
         else:
             st.info("No inventory data to display.")
 
     with purchase_tab:
-        st.subheader("📋 Purchase Report")
+        st.subheader("Purchase Report")
         if not st.session_state.purchase_orders.empty:
             st.dataframe(st.session_state.purchase_orders)
         else:
             st.info("No purchase orders to display.")
 
     with toolkit_tab:
-        st.subheader("🚀 Expansion Toolkit for MSMEs")
+        st.subheader("Expansion Toolkit for MSMEs")
         total_sales = st.session_state.sales_orders['Total Amount'].sum()
         st.info(f"Your total lifetime sales are currently: ${total_sales:,.2f}")
         st.markdown("---")
 
         if total_sales < 10000:
-            st.subheader("Level 1: Getting Started 🐣")
+            st.subheader("Level 1: Getting Started")
             st.write("Your sales are under $10,000. Focus on building a solid foundation.")
             st.markdown("""
             - **Marketing**: Utilize social media marketing and local community engagement.
@@ -505,7 +505,7 @@ elif page == "Reporting":
             - **Next Step**: Aim to reach a sales milestone of $25,000.
             """)
         elif total_sales < 100000:
-            st.subheader("Level 2: Growing Up 🌳")
+            st.subheader("Level 2: Growing Up")
             st.write("Your sales are between $10,000 and $100,000. It's time to scale up.")
             st.markdown("""
             - **Marketing**: Consider running targeted online ad campaigns (e.g., Google Ads, Facebook Ads).
@@ -514,7 +514,7 @@ elif page == "Reporting":
             - **Next Step**: Expand your customer base and aim for a sales milestone of $500,000.
             """)
         else:
-            st.subheader("Level 3: Scaling & Expanding 🚀")
+            st.subheader("Level 3: Scaling & Expanding")
             st.write("Your sales exceed $100,000. You're ready for significant growth.")
             st.markdown("""
             - **Marketing**: Explore international markets or partnerships with larger companies.
