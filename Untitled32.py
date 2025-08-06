@@ -69,13 +69,12 @@ if not st.session_state.logged_in:
     login_form()
 else:
     # --- Corrected Data Loading ---
-    user_data = load_user_data(st.session_state.username)
-    st.session_state.products = user_data.get('products', {})
-    st.session_state.customers = user_data.get('customers', {})
-    st.session_state.suppliers = user_data.get('suppliers', {})
-    st.session_state.sales_orders = user_data.get('sales_orders', [])
-    st.session_state.purchase_orders = user_data.get('purchase_orders', [])
-    
+    st.session_state['products'] = user_data.get('products', {})
+st.session_state['customers'] = user_data.get('customers', {})
+st.session_state['suppliers'] = user_data.get('suppliers', {})
+st.session_state['sales_orders'] = user_data.get('sales_orders', [])
+st.session_state['purchase_orders'] = user_data.get('purchase_orders', [])
+
     # --- Logout Function ---
     def logout():
         # Save current session data before logging out
