@@ -76,7 +76,7 @@ st.session_state['sales_orders'] = user_data.get('sales_orders', [])
 st.session_state['purchase_orders'] = user_data.get('purchase_orders', [])
 
 # --- Logout Function ---
-    def logout():
+def logout():
         # Save current session data before logging out
         data_to_save = {
             'products': st.session_state.products,
