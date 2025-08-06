@@ -77,15 +77,15 @@ if page == "Dashboard":
     col1, col2, col3, col4 = st.columns(4)
 
     total_sales = st.session_state.sales_orders['Total Amount'].sum()
-    col1.metric("Total Sales", f"${total_sales:,.2f}")
+    col1.metric("Total Sales", f"₹{total_sales:,.2f}")
 
     current_stock_value = (st.session_state.inventory['Unit Price'] * st.session_state.inventory['Current Stock Quantity']).sum()
-    col2.metric("Current Stock Value", f"${current_stock_value:,.2f}")
+    col2.metric("Current Stock Value", f"₹{current_stock_value:,.2f}")
 
     pending_orders = st.session_state.sales_orders.shape[0] - st.session_state.sales_orders[
         'Order ID'
     ].shape[0]  # A simple placeholder
-    col3.metric("🛒 Pending Orders", st.session_state.sales_orders.shape[0])
+    col3.metric("Pending Orders", st.session_state.sales_orders.shape[0])
 
     low_stock_items = st.session_state.inventory[
         st.session_state.inventory['Current Stock Quantity'] <= st.session_state.inventory['Reorder Level']
@@ -95,10 +95,12 @@ if page == "Dashboard":
     st.markdown("---")
 
     # Sales Trend Chart
-    st.subheader("📈 Sales Trends")
+    st.subheader("Sales Trends")
     if not st.session_state.sales_history.empty:
+        # Ensure 'Date' is datetime and 'Total Sale' is numeric for plotting
+        st.session_state.sales_history['Date'] = pd.to_datetime(st.session_state.sales_history['Date'])
+        st.session_state.sales_history['Total Sale'] = pd.to_numeric(st.session_state.sales_history['Total Sale'], errors='coerce')
         sales_by_date = st.session_state.sales_history.groupby('Date')['Total Sale'].sum().reset_index()
-        sales_by_date['Date'] = pd.to_datetime(sales_by_date['Date'])
         st.line_chart(sales_by_date.set_index('Date'))
     else:
         st.info("No sales data available to display trends.")
@@ -106,8 +108,14 @@ if page == "Dashboard":
     # Top-Selling Products Chart
     st.subheader("Top-Selling Products")
     if not st.session_state.sales_history.empty:
-        top_products = st.session_state.sales_history.groupby('Product Name')['Quantity'].sum().nlargest(5)
-        st.bar_chart(top_products)
+        st.session_state.sales_history['Quantity'] = pd.to_numeric(st.session_state.sales_history['Quantity'], errors='coerce')
+        clean_sales_history = st.session_state.sales_history.dropna(subset=['Quantity'])
+
+        if not clean_sales_history.empty:
+            top_products = clean_sales_history.groupby('Product Name')['Quantity'].sum().nlargest(5)
+            st.bar_chart(top_products)
+        else:
+            st.info("No valid sales data available to display top-selling products.")
     else:
         st.info("No sales data available to display top-selling products.")
 
@@ -121,7 +129,7 @@ elif page == "Inventory Management":
     )
 
     with add_product_tab:
-        st.subheader("➕ Add New Product")
+        st.subheader("Add New Product")
         with st.form("add_product_form"):
             product_name = st.text_input("Product Name")
             description = st.text_area("Description")
@@ -150,7 +158,7 @@ elif page == "Inventory Management":
                     st.error("Please fill in all required fields.")
 
     with inventory_tab:
-        st.subheader("📄 All Products")
+        st.subheader("All Products")
         if not st.session_state.inventory.empty:
             # Highlight low stock items
             def highlight_low_stock(row):
@@ -219,7 +227,7 @@ elif page == "Sales Management":
     create_sale_tab, view_sales_tab = st.tabs(["Create Sale Order", "View Sales Orders"])
 
     with create_sale_tab:
-        st.subheader("🛒 Create New Sale Order")
+        st.subheader("Create New Sale Order")
         if st.session_state.inventory.empty or st.session_state.customers.empty:
             st.warning("Please add products to inventory and customers before creating a sale.")
         else:
@@ -241,7 +249,7 @@ elif page == "Sales Management":
                         st.session_state.inventory['Product Name'] == product
                     ]['Unit Price'].iloc[0]
                     quantity = st.number_input(
-                        f"Quantity for {product} (Unit Price: ${unit_price:.2f})",
+                        f"Quantity for {product} (Unit Price: ₹{unit_price:.2f})",
                         min_value=1, step=1, key=f"sale_qty_{product_id}"
                     )
                     sale_products.append({
@@ -252,7 +260,7 @@ elif page == "Sales Management":
                     })
                     total_amount += quantity * unit_price
 
-                st.write(f"**Total Amount: ${total_amount:,.2f}**")
+                st.write(f"**Total Amount: ₹{total_amount:,.2f}**")
                 submitted = st.form_submit_button("Record Sale")
 
                 if submitted:
@@ -280,13 +288,12 @@ elif page == "Sales Management":
 
                         for item in sale_products:
                             update_stock(item['product_id'], item['quantity'], 'sale')
-                            # Add to sales history for reporting and dashboard
                             new_history = pd.DataFrame([{
                                 'Date': datetime.now().strftime("%Y-%m-%d"),
                                 'Product ID': item['product_id'],
                                 'Product Name': item['product_name'],
-                                'Quantity': item['quantity'],
-                                'Total Sale': item['quantity'] * item['unit_price']
+                                'Quantity': int(item['quantity']),
+                                'Total Sale': float(item['quantity'] * item['unit_price'])
                             }])
                             st.session_state.sales_history = pd.concat(
                                 [st.session_state.sales_history, new_history], ignore_index=True
@@ -331,7 +338,7 @@ elif page == "Purchase Management":
                         st.session_state.inventory['Product Name'] == product
                     ]['Unit Price'].iloc[0]
                     quantity = st.number_input(
-                        f"Quantity for {product} (Unit Price: ${unit_price:.2f})",
+                        f"Quantity for {product} (Unit Price: ₹{unit_price:.2f})",
                         min_value=1, step=1, key=f"purchase_qty_{product_id}"
                     )
                     purchase_products.append({
@@ -342,7 +349,7 @@ elif page == "Purchase Management":
                     })
                     total_amount += quantity * unit_price
 
-                st.write(f"**Total Amount: ${total_amount:,.2f}**")
+                st.write(f"**Total Amount: ₹{total_amount:,.2f}**")
                 submitted = st.form_submit_button("Record Purchase")
 
                 if submitted:
@@ -363,7 +370,7 @@ elif page == "Purchase Management":
                     st.success(f"Purchase order from '{supplier_name}' recorded successfully!")
 
     with view_purchases_tab:
-        st.subheader("📜 All Purchase Orders")
+        st.subheader("All Purchase Orders")
         if not st.session_state.purchase_orders.empty:
             st.dataframe(st.session_state.purchase_orders)
         else:
@@ -418,7 +425,7 @@ elif page == "Supplier Management":
     add_supplier_tab, view_suppliers_tab = st.tabs(["Add New Supplier", "View Suppliers"])
 
     with add_supplier_tab:
-        st.subheader("➕ Add New Supplier")
+        st.subheader("Add New Supplier")
         with st.form("add_supplier_form"):
             name = st.text_input("Company Name")
             contact_person = st.text_input("Contact Person")
@@ -492,30 +499,30 @@ elif page == "Reporting":
     with toolkit_tab:
         st.subheader("Expansion Toolkit for MSMEs")
         total_sales = st.session_state.sales_orders['Total Amount'].sum()
-        st.info(f"Your total lifetime sales are currently: ${total_sales:,.2f}")
+        st.info(f"Your total lifetime sales are currently: ₹{total_sales:,.2f}")
         st.markdown("---")
 
-        if total_sales < 10000:
+        if total_sales < 100000:
             st.subheader("Level 1: Getting Started")
-            st.write("Your sales are under $10,000. Focus on building a solid foundation.")
+            st.write("Your sales are under ₹1,00,000. Focus on building a solid foundation.")
             st.markdown("""
             - **Marketing**: Utilize social media marketing and local community engagement.
             - **Operations**: Optimize your inventory management system and ensure efficient order processing.
             - **Finance**: Maintain clear financial records and understand your basic cash flow.
-            - **Next Step**: Aim to reach a sales milestone of $25,000.
+            - **Next Step**: Aim to reach a sales milestone of ₹5,00,000.
             """)
-        elif total_sales < 100000:
+        elif total_sales < 1000000:
             st.subheader("Level 2: Growing Up")
-            st.write("Your sales are between $10,000 and $100,000. It's time to scale up.")
+            st.write("Your sales are between ₹1,00,000 and ₹10,00,000. It's time to scale up.")
             st.markdown("""
             - **Marketing**: Consider running targeted online ad campaigns (e.g., Google Ads, Facebook Ads).
             - **Operations**: Streamline your supply chain and explore new suppliers.
             - **Finance**: Look into business credit lines and understand your profit margins more deeply.
-            - **Next Step**: Expand your customer base and aim for a sales milestone of $500,000.
+            - **Next Step**: Expand your customer base and aim for a sales milestone of ₹50,00,000.
             """)
         else:
             st.subheader("Level 3: Scaling & Expanding")
-            st.write("Your sales exceed $100,000. You're ready for significant growth.")
+            st.write("Your sales exceed ₹10,00,000. You're ready for significant growth.")
             st.markdown("""
             - **Marketing**: Explore international markets or partnerships with larger companies.
             - **Operations**: Invest in automation tools and consider hiring specialized staff.
